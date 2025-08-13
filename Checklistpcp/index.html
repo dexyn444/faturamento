@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Checklist Diário – PCP / Faturamento</title>
+<style>
+  /* Paleta profissional estilo ERP corporativo */
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0d0f14; color: #f0f0f0; margin: 0; padding: 20px; display: flex; justify-content: center; }
+
+  .login-container { background: #1a1d27; padding: 50px 40px; border-radius: 20px; box-shadow: 0 12px 50px rgba(0,0,0,0.8); text-align: center; width: 400px; }
+  .login-container h1 { color: #2ea3f2; margin-bottom: 20px; font-size: 32px; font-weight: 700; letter-spacing: 1px; }
+  .login-container input { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: none; font-size: 16px; background: #252934; color: #f0f0f0; }
+  .login-container button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #2ea3f2; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+  .login-container button:hover { background: #1d82c8; }
+  .login-container .register-btn { margin-top: 10px; background: #ffc845; color: #0d0f14; }
+  .login-container .register-btn:hover { background: #e0b123; }
+
+  .app-container { display:none; width: 100%; max-width: 1000px; margin: 30px auto; }
+  h1.app-title { text-align: center; color: #2ea3f2; margin-bottom: 40px; font-weight: 800; font-size: 36px; letter-spacing: 1px; }
+
+  .section { background: #1f2230; padding: 30px; border-radius: 18px; margin-bottom: 30px; box-shadow: 0 6px 30px rgba(0,0,0,0.7); transition: 0.3s; }
+  .section:hover { box-shadow: 0 8px 40px rgba(0,0,0,0.8); }
+  .section h2 { display: flex; justify-content: space-between; align-items: center; color: #ffc845; font-size: 24px; margin-bottom: 20px; font-weight: 700; letter-spacing: 0.5px; }
+  .section h2 span { cursor: pointer; font-size: 18px; color: #28a745; transition: 0.3s; }
+  .section h2 span:hover { color: #1d7c32; }
+
+  .list { list-style: none; padding: 0; }
+  .item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; background: rgba(255,255,255,0.05); padding: 14px 20px; border-radius: 12px; transition: 0.3s; }
+  .item:hover { background: rgba(255,255,255,0.08); }
+  .item input[type="checkbox"] { margin-right: 16px; transform: scale(1.25); cursor: pointer; }
+  .remove-btn { background: transparent; border: none; color: #f87171; font-size: 18px; cursor: pointer; transition: 0.3s; }
+  .remove-btn:hover { color: #ef4444; }
+
+  .add-section { display: flex; margin-top: 16px; gap: 14px; }
+  .add-section input { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 14px; background: #252934; color: #f0f0f0; }
+  .add-section button { padding: 14px 20px; border: none; border-radius: 12px; background: #2ea3f2; color: #fff; cursor: pointer; transition: 0.3s; font-weight: 700; }
+  .add-section button:hover { background: #1d82c8; }
+</style>
+</head>
+<body>
+
+<div id="login" class="login-container">
+  <h1>Área Restrita</h1>
+  <input type="text" id="username" placeholder="Usuário">
+  <input type="password" id="password" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+  <button class="register-btn" onclick="showRegister()">Criar Conta</button>
+
+  <div id="registerForm" style="display:none; margin-top:15px;">
+    <input type="text" id="newUser" placeholder="Novo Usuário">
+    <input type="password" id="newPass" placeholder="Nova Senha">
+    <button onclick="registerUser()">Registrar</button>
+  </div>
+</div>
+
+<div id="app" class="app-container">
+  <h1 class="app-title">Checklist Diário – PCP / Faturamento</h1>
+  <div id="sections"></div>
+</div>
+
+<script>
+  let users = JSON.parse(localStorage.getItem('users') || '{}');
+
+  function showRegister() {
+    document.getElementById('registerForm').style.display = 'block';
+  }
+
+  function registerUser() {
+    const newUser = document.getElementById('newUser').value.trim();
+    const newPass = document.getElementById('newPass').value.trim();
+    if(!newUser || !newPass) { alert('Preencha todos os campos!'); return; }
+    users[newUser] = newPass;
+    localStorage.setItem('users', JSON.stringify(users));
+    alert('Usuário registrado com sucesso!');
+    document.getElementById('registerForm').style.display = 'none';
+  }
+
+  function login() {
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
+    if(users[user] && users[user] === pass) {
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      initApp();
+    } else {
+      alert('Usuário ou senha incorretos!');
+    }
+  }
+
+  const sectionsData = {
+    'Pedidos de Vendas': ['Verificar pedidos do dia anterior','Registrar novos pedidos'],
+    'Liberação de Pedidos': ['Conferir pagamentos','Liberar pedidos pendentes'],
+    'Documentos de Saída': ['Emitir notas fiscais','Arquivar documentos']
+  };
+
+  function initApp() {
+    const savedData = JSON.parse(localStorage.getItem('checklistSections') || '{}');
+    Object.keys(sectionsData).forEach(section => { if(savedData[section]) sectionsData[section] = savedData[section]; });
+    renderSections();
+    setTimeout(alertTasks, 1000);
+    setInterval(alertTasks, 3600000);
+  }
+
+  const sectionsEl = document.getElementById('sections');
+
+  function renderSections() {
+    sectionsEl.innerHTML = '';
+    for (const [section, items] of Object.entries(sectionsData)) {
+      const sectionEl = document.createElement('div');
+      sectionEl.className = 'section';
+      sectionEl.innerHTML = `<h2 contenteditable='true'>${section} <span onclick='editTitle(this)'>✎</span></h2>`;
+      const listEl = document.createElement('ul');
+      listEl.className = 'list';
+      items.forEach((text, idx) => {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = `<div class='left'><input type='checkbox'>${text}</div><button class='remove-btn' onclick="removeItem('${section}', ${idx})">✖</button>`;
+        listEl.appendChild(li);
+      });
+      sectionEl.appendChild(listEl);
+      const addSec = document.createElement('div');
+      addSec.className = 'add-section';
+      addSec.innerHTML = `<input type='text' id='input-${section}' placeholder='Novo item' maxlength='60'><button onclick="addItem('${section}')">Adicionar</button>`;
+      sectionEl.appendChild(addSec);
+      sectionsEl.appendChild(sectionEl);
+    }
+  }
+
+  function editTitle(el) { el.parentElement.focus(); }
+  function saveData() { localStorage.setItem('checklistSections', JSON.stringify(sectionsData)); }
+  function addItem(section) { const input = document.getElementById(`input-${section}`); const text = input.value.trim(); if(!text) return; sectionsData[section].push(text); saveData(); renderSections(); }
+  function removeItem(section, idx) { sectionsData[section].splice(idx, 1); saveData(); renderSections(); }
+  function alertTasks() { let total=0; Object.values(sectionsData).forEach(items => total += items.length); if(total>0) alert(`Lembrete: Você tem ${total} tarefas pendentes hoje!`); }
+</script>
+</body>
+</html>
