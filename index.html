@@ -3,105 +3,108 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="stylesheet" href="pcp.css">
 <title>Checklist Diário – PCP / Faturamento</title>
 </head>
 <body>
 
 <div id="login" class="login-container">
-  <h1>Login de Usuário</h1>
+  <h1>Área Restrita</h1>
   <input type="text" id="username" placeholder="Usuário">
   <input type="password" id="password" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
-  <button class="register-btn" onclick="showRegister()">Criar Conta</button>
+  <button id="loginBtn">Entrar</button>
+  <button class="register-btn" id="registerBtn">Criar Conta</button>
 
   <div id="registerForm" style="display:none; margin-top:15px;">
     <input type="text" id="newUser" placeholder="Novo Usuário">
     <input type="password" id="newPass" placeholder="Nova Senha">
-    <button onclick="registerUser()">Registrar</button>
+    <button id="registerConfirm">Registrar</button>
   </div>
 </div>
 
+<div id="welcomeOverlay" class="welcome-overlay"><h1 id="welcomeText"></h1></div>
 <div id="app" class="app-container">
   <h1 class="app-title">Checklist Diário – PCP / Faturamento</h1>
   <div id="sections"></div>
 </div>
 
 <script>
-  let users = JSON.parse(localStorage.getItem('users') || '{}');
+let users = JSON.parse(localStorage.getItem('users') || '{}');
 
-  function showRegister() {
-    document.getElementById('registerForm').style.display = 'block';
+document.getElementById('registerBtn').addEventListener('click', ()=>{
+  document.getElementById('registerForm').style.display = 'block';
+});
+
+document.getElementById('registerConfirm').addEventListener('click', ()=>{
+  const newUser = document.getElementById('newUser').value.trim();
+  const newPass = document.getElementById('newPass').value.trim();
+  if(!newUser || !newPass){ alert('Preencha todos os campos!'); return; }
+  if(users[newUser]){ alert('Usuário já existe!'); return; }
+  users[newUser] = newPass;
+  localStorage.setItem('users', JSON.stringify(users));
+  alert('Usuário registrado com sucesso!');
+  document.getElementById('registerForm').style.display = 'none';
+});
+
+document.getElementById('loginBtn').addEventListener('click', ()=>{
+  const user = document.getElementById('username').value.trim();
+  const pass = document.getElementById('password').value.trim();
+  if(users[user] && users[user] === pass){
+    document.getElementById('login').style.display = 'none';
+    const overlay = document.getElementById('welcomeOverlay');
+    const welcomeText = document.getElementById('welcomeText');
+    welcomeText.textContent = `Bem-vindo ao Sistema, ${user}!`;
+    overlay.classList.add('show');
+    setTimeout(()=>{
+      overlay.style.opacity = 0;
+      setTimeout(()=>{
+        overlay.style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        initApp();
+      },1000);
+    },2000);
+  } else { alert('Usuário ou senha incorretos!'); }
+});
+
+const sectionsData = {
+  'Pedidos de Vendas':['Verificar pedidos do dia anterior','Registrar novos pedidos'],
+  'Liberação de Pedidos':['Conferir pagamentos','Liberar pedidos pendentes'],
+  'Documentos de Saída':['Emitir notas fiscais','Arquivar documentos']
+};
+
+function initApp(){
+  const savedData = JSON.parse(localStorage.getItem('checklistSections')||'{}');
+  Object.keys(sectionsData).forEach(s=>{if(savedData[s]) sectionsData[s]=savedData[s];});
+  renderSections();
+  setTimeout(alertTasks,1000);
+  setInterval(alertTasks,3600000);
+}
+
+const sectionsEl = document.getElementById('sections');
+function renderSections(){
+  sectionsEl.innerHTML='';
+  for(const [section, items] of Object.entries(sectionsData)){
+    const sectionEl = document.createElement('div');
+    sectionEl.className='section';
+    sectionEl.innerHTML=`<h2 contenteditable='true'>${section} <span onclick='editTitle(this)'>✎</span></h2>`;
+    const listEl=document.createElement('ul'); listEl.className='list';
+    items.forEach((text,idx)=>{
+      const li=document.createElement('li'); li.className='item';
+      li.innerHTML=`<div class='left'><input type='checkbox'>${text}</div><button class='remove-btn' onclick="removeItem('${section}',${idx})">✖</button>`;
+      listEl.appendChild(li);
+    });
+    sectionEl.appendChild(listEl);
+    const addSec=document.createElement('div'); addSec.className='add-section';
+    addSec.innerHTML=`<input type='text' id='input-${section}' placeholder='Novo item' maxlength='60'><button onclick="addItem('${section}')">Adicionar</button>`;
+    sectionEl.appendChild(addSec);
+    sectionsEl.appendChild(sectionEl);
   }
+}
 
-  function registerUser() {
-    const newUser = document.getElementById('newUser').value.trim();
-    const newPass = document.getElementById('newPass').value.trim();
-    if(!newUser || !newPass) { alert('Preencha todos os campos!'); return; }
-    users[newUser] = newPass;
-    localStorage.setItem('users', JSON.stringify(users));
-    alert('Usuário registrado com sucesso!');
-    document.getElementById('registerForm').style.display = 'none';
-  }
-
-  function login() {
-    const user = document.getElementById('username').value;
-    const pass = document.getElementById('password').value;
-    if(users[user] && users[user] === pass) {
-      document.getElementById('login').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      initApp();
-    } else {
-      alert('Usuário ou senha incorretos!');
-    }
-  }
-
-  const sectionsData = {
-    'Pedidos de Vendas': ['Verificar pedidos do dia anterior','Registrar novos pedidos'],
-    'Liberação de Pedidos': ['Conferir pagamentos','Liberar pedidos pendentes'],
-    'Documentos de Saída': ['Emitir notas fiscais','Arquivar documentos']
-  };
-
-  function initApp() {
-    const savedData = JSON.parse(localStorage.getItem('checklistSections') || '{}');
-    Object.keys(sectionsData).forEach(section => { if(savedData[section]) sectionsData[section] = savedData[section]; });
-    renderSections();
-    setTimeout(alertTasks, 1000);
-    setInterval(alertTasks, 3600000);
-  }
-
-  const sectionsEl = document.getElementById('sections');
-
-  function renderSections() {
-    sectionsEl.innerHTML = '';
-    for (const [section, items] of Object.entries(sectionsData)) {
-      const sectionEl = document.createElement('div');
-      sectionEl.className = 'section';
-      sectionEl.innerHTML = `<h2 contenteditable='true'>${section} <span onclick='editTitle(this)'>✎</span></h2>`;
-      const listEl = document.createElement('ul');
-      listEl.className = 'list';
-      items.forEach((text, idx) => {
-        const li = document.createElement('li');
-        li.className = 'item';
-        li.innerHTML = `<div class='left'><input type='checkbox'>${text}</div><button class='remove-btn' onclick="removeItem('${section}', ${idx})">✖</button>`;
-        listEl.appendChild(li);
-      });
-      sectionEl.appendChild(listEl);
-      const addSec = document.createElement('div');
-      addSec.className = 'add-section';
-      addSec.innerHTML = `<input type='text' id='input-${section}' placeholder='Novo item' maxlength='60'><button onclick="addItem('${section}')">Adicionar</button>`;
-      sectionEl.appendChild(addSec);
-      sectionsEl.appendChild(sectionEl);
-    }
-  }
-
-  function editTitle(el) { el.parentElement.focus(); }
-  function saveData() { localStorage.setItem('checklistSections', JSON.stringify(sectionsData)); }
-  function addItem(section) { const input = document.getElementById(`input-${section}`); const text = input.value.trim(); if(!text) return; sectionsData[section].push(text); saveData(); renderSections(); }
-  function removeItem(section, idx) { sectionsData[section].splice(idx, 1); saveData(); renderSections(); }
-  function alertTasks() { let total=0; Object.values(sectionsData).forEach(items => total += items.length); if(total>0) alert(`Lembrete: Você tem ${total} tarefas pendentes hoje!`); }
+function editTitle(el){ el.parentElement.focus(); }
+function saveData(){ localStorage.setItem('checklistSections',JSON.stringify(sectionsData)); }
+function addItem(section){ const input=document.getElementById(`input-${section}`); const text=input.value.trim(); if(!text) return; sectionsData[section].push(text); saveData(); renderSections(); }
+function removeItem(section,idx){ sectionsData[section].splice(idx,1); saveData(); renderSections(); }
+function alertTasks(){ let total=0; Object.values(sectionsData).forEach(items=>total+=items.length); if(total>0) alert(`Lembrete: Você tem ${total} tarefas pendentes hoje!`); }
 </script>
 </body>
 </html>
-
-
